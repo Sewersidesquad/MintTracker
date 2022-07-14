@@ -4,14 +4,14 @@ import time
 import base58
 import os
 import pandas as pd
-from datetime import datetime
+import datetime
 import tkinter
 import customtkinter
 import threading
 
 
 def getNftData():
-    global ACCOUNT_ID, HEADERS, logVar
+    global ACCOUNT_ID, HEADERS, logVar, total
     mintedDatas = []
     responseJson = requests.get(
         str(f"https://api3.loopring.io/api/v3/user/nft/mints?accountId={ACCOUNT_ID}"),
@@ -56,6 +56,8 @@ def goHam(nftDatas):
     nfts = []
     p = 0
     for nftData in nftDatas:
+        
+        eta = datetime.datetime.now()
         p += 1
         time.sleep(1)
         nftClean = str(nftData.replace("'", ""))
@@ -92,7 +94,12 @@ def goHam(nftDatas):
         }
         nfts.append(nftData)
         # pp.pprint(nftData)
-        logVar.set(str(f"Total mints tracked: {p}"))
+        
+        etanow = datetime.datetime.now()
+        etaDelta = etanow - eta
+        timeLeft = int(etaDelta.total_seconds() *  (total - p))
+        
+        logVar.set(str(f"Total mints tracked: {p}/{total}, ETR: {datetime.timedelta(seconds=timeLeft)}"))
     logVar.set("Creating DataFrame...")
     return nfts
 
@@ -102,7 +109,7 @@ def goHam(nftDatas):
 
 def createDf(nfts):
     global ACCOUNT_ID
-    date = datetime.now().strftime("%Y-%m-%d")
+    date = datetime.datetime.now().strftime("%Y-%m-%d")
     path = os.getcwd() + f"\\{ACCOUNT_ID}s_mints_Tracked_On_{date}.xlsx"
     data = {
         "Name": [i["Name"] for i in nfts],

@@ -56,7 +56,7 @@ def goHam(nftDatas):
     nfts = []
     p = 0
     for nftData in nftDatas:
-        
+
         eta = datetime.datetime.now()
         p += 1
         time.sleep(1)
@@ -82,29 +82,45 @@ def goHam(nftDatas):
         ).json()
         nftId = nftInfo[0]["nftId"]
         cid = unScrambleNftId(nftId)
-        metadata = requests.get(f"https://spacemonke.infura-ipfs.io/ipfs/{cid}").json()
-        nftData = {
-            "Name": metadata["name"],
-            "Description": metadata["description"],
-            "Owner Account ID(s)": [i for i in nftOwnersAccount],
-            "Owner Wallet Address(es)": [i for i in nftOwnersAddress],
-            "Royalty Percentage": metadata["royalty_percentage"],
-            "MetaData CID": cid,
-            "Image CID": metadata["image"],
-        }
-        nfts.append(nftData)
-        # pp.pprint(nftData)
-        
+        try:
+            metadata = requests.get(
+                f"https://spacemonke.infura-ipfs.io/ipfs/{cid}"
+            ).json()
+            nftData = {
+                "Name": metadata["name"],
+                "Description": metadata["description"],
+                "Owner Account ID(s)": [i for i in nftOwnersAccount],
+                "Owner Wallet Address(es)": [i for i in nftOwnersAddress],
+                "Royalty Percentage": metadata["royalty_percentage"],
+                "MetaData CID": cid,
+                "Image CID": metadata["image"],
+            }
+            nfts.append(nftData)
+            # pp.pprint(nftData)
+        except:
+            nftData = {
+                "Name": nftId,
+                "Description": "Not found, nft ID provided in Name",
+                "Owner Account ID(s)": [i for i in nftOwnersAccount],
+                "Owner Wallet Address(es)": [i for i in nftOwnersAddress],
+                "Royalty Percentage": "Not found",
+                "MetaData CID": cid,
+                "Image CID": "Not found",
+            }
+            nfts.append(nftData)
         etanow = datetime.datetime.now()
         etaDelta = etanow - eta
-        timeLeft = int(etaDelta.total_seconds() *  (total - p))
-        
-        logVar.set(str(f"Total mints tracked: {p}/{total}, ETR: {datetime.timedelta(seconds=timeLeft)}"))
+        timeLeft = int(etaDelta.total_seconds() * (total - p))
+
+        logVar.set(
+            str(
+                f"Total mints tracked: {p}/{total}, ETR: {datetime.timedelta(seconds=timeLeft)}"
+            )
+        )
     logVar.set("Creating DataFrame...")
     return nfts
 
 
-# perhaps use list of dictionarys to populate a data frame with for loops or think of another way so you don't have to grow the data frame
 
 
 def createDf(nfts):

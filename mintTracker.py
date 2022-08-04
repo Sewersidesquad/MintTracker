@@ -6,8 +6,9 @@ import constants as c
 import threading
 import actions as act
 import datetime
-import pandas as pd
 import time
+import csv
+import itertools
 
 
 class App(customtkinter.CTk):
@@ -58,22 +59,8 @@ class App(customtkinter.CTk):
             master=self,
             orient=tk.HORIZONTAL,
             length=500,
-            maximum=100,
+            maximum=3,
             mode="determinate",
-        )
-
-        self.prop_checkbox = customtkinter.CTkCheckBox(
-            master=self,
-            text="Properties",
-            onvalue="on",
-            offvalue="off",
-        )
-
-        self.quantity_checkbox = customtkinter.CTkCheckBox(
-            master=self,
-            text="Quantities",
-            onvalue="on",
-            offvalue="off",
         )
 
         self.entry_apik = customtkinter.CTkEntry(
@@ -102,17 +89,13 @@ class App(customtkinter.CTk):
         self.entry_acc.grid(row=1, column=1, columnspan=3, **padding, sticky="sew")
         self.create_button.grid(row=2, column=2, **padding, sticky="nw")
         self.track_button.grid(row=2, column=2, **padding, sticky="ne")
-        self.attr_checkbox.grid(row=2, column=2, sticky=tk.N)
-        self.prop_checkbox.grid(row=2, column=2, sticky=tk.S)
-        self.quantity_checkbox.grid(row=3, column=2, **padding, sticky=tk.N)
+        self.attr_checkbox.grid(row=2, column=2, **padding)
         self.the_log_label.grid(row=4, column=2, **padding, sticky=tk.N)
         self.pb1.grid(row=4, column=2, sticky=tk.S)
         self.my_label.grid(row=5, column=2, **padding)
 
     def get_consts(self):
         c.ATTRS = self.attr_checkbox.get()
-        c.PROPS = self.prop_checkbox.get()
-        c.QUANTITY = self.quantity_checkbox.get()
         path = os.getcwd() + "\\user_info.json"
         with open(path, "r") as f:
             info = json.load(f)
@@ -156,7 +139,7 @@ class App(customtkinter.CTk):
                 etanow = datetime.datetime.now()
                 etaDelta = etanow - eta
                 timeLeft = int(etaDelta.total_seconds() * (total - p))
-          
+
                 self.log_var.set(
                     str(
                         f"Total mints tracked: {p}/{total}, ETR: {datetime.timedelta(seconds=timeLeft)}"
@@ -165,52 +148,53 @@ class App(customtkinter.CTk):
                 step = round(100 / total, 2)
                 self.pb1.step(step)
 
-        self.create_df()
+        self.create_csv()
 
-    def create_df(self):
+    def create_csv(self):
         self.log_var.set("Creating DataFrame...")
         account_ID = c.ACCOUNT_ID
         date = datetime.datetime.now().strftime("%Y-%m-%d")
-        path = os.getcwd() + f"\\{account_ID}s_mints_Tracked_On_{date}.xlsx"
-        data = self.create_data()
-        df = pd.DataFrame(data)
-        self.log_var.set("Creating Spreadsheet...")
-        with pd.ExcelWriter(path) as writer:
-            df.to_excel(writer)
-        time.sleep(1)
+        path = os.getcwd() + f"\\{account_ID}s_mints_Tracked_On_{date}.csv"
+        data = [i.data for i in self.nfts]
+        data = list(itertools.chain.from_iterable(data))
+        keys = set().union(*(d.keys() for d in data))
+        klen = len(keys)
+        keysord = [None] * klen
+        keysord[0] = "Name"
+        keysord[1] = "Description"
+        keysord[2] = "Owner"
+        keysord[3] = "Amount"
+        keysord[4] = "Royalty Percentage"
+        keysord[5] = "Metadata Cid"
+        keysord[6] = "Image Cid"
+        if klen != 7:
+            i = 1
+            p = 7
+            while p < klen:
+                keysord[p] = f"Trait {i}"
+                keysord[p + 1] = f"Value {i}"
+                p += 2
+                i += 1
+        with open(path, 'w', newline='') as output_file:
+            dict_writer = csv.DictWriter(output_file, keysord)
+            dict_writer.writeheader()
+            dict_writer.writerows(data)
         self.log_var.set(
             f"Your spreadsheet is ready, in the same file as MintTracker.exe"
         )
 
-    def create_data(self):
-        data = {
-            "Name": [i.data["Name"] for i in self.nfts],
-            "Description": [i.data["Description"] for i in self.nfts],
-            "List Of Owner Wallet Address(es)": [
-                i.data["Owner Wallet Address(es)"] for i in self.nfts
-            ],
-            "Royalty Percentage": [i.data["Royalty Percentage"] for i in self.nfts],
-            "Attributes": [i.data["Attributes"] for i in self.nfts],
-            "Properties": [i.data["Properties"] for i in self.nfts],
-            "Ipfs MetaData CID": [i.data["MetaData CID"] for i in self.nfts],
-            "Image CID": [i.data["Image CID"] for i in self.nfts],
-        }
-        return data
 
 
 # Object for each nft
-class MintedNft():
+class MintedNft:
     def __init__(self, nft_data):
         self.nft = nft_data.replace("'", "")
         holders = act.find_holders(self.nft)
         self.holders = holders
         cid = act.convert_cid(self.nft)
         self.cid = cid
-        data = act.retrieve_data(
-            self.nft, self.holders, self.cid, c.ATTRS, c.PROPS, c.QUANTITY
-        )
+        data = act.retrieve_data(self.nft, self.holders, self.cid, c.ATTRS)
         self.data = data
-
 
 
 # run the app

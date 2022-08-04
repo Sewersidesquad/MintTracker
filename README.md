@@ -5,8 +5,7 @@ Download it here - https://github.com/Sewersidesquad/MintTracker/releases
 
 extract/unzip it and read the get started pdf :)
 
-or get started - 
-Read through this document and you should have no problems :)
+or read it here without the pictures - 
 
 Step 1
 Go into your loopring wallet

@@ -34,55 +34,49 @@ def quantity_dict(holders):
         quant_dict[holder] = i[1]
     return quant_dict
 
-def retrieve_data(nft, holders, cid, attrs, props, quantity):
-    if quantity == "on":
-        quantity = quantity_dict(holders)
-    else:
-        quantity = [i[0] for i in holders]
+def retrieve_data(nft, holders, cid, attrs):
+    datas_nft = []
     try:
-        metadata = requests.get(
-            f"https://spacemonke.infura-ipfs.io/ipfs/{cid}"
-        ).json()
+        metadata = requests.get(f"https://spacemonke.infura-ipfs.io/ipfs/{cid}").json()
         try:
-            if attrs == "on" and props == "on":
+            if attrs == "on":
                 attrs = metadata["attributes"]
-                props = metadata["properties"]
-            elif attrs == "on":
-                attrs = metadata["attributes"]
-                props = "Not selected"
-            elif props == "on":
-                attrs = "Not selected"
-                props = metadata["properties"]
             else:
                 attrs = "Not selected"
-                props = "Not selected"
+
         except Exception:
-            props = "Not Found"
             attrs = "Not Found"
-            
-        nft_data = {
-            "Name": metadata["name"],
-            "Description": metadata["description"],
-            "Owner Wallet Address(es)": quantity,
-            "Royalty Percentage": metadata["royalty_percentage"],
-            "Attributes": attrs,
-            "Properties": props,
-            "MetaData CID": cid,
-            "Image CID": metadata["image"],
-        }
+        name = metadata["name"]
+        description = metadata["description"]
+        royalty = metadata["royalty_percentage"]
+        image_cid = metadata["image"]
     except Exception:
+        name = nft
+        description = "Not Found, nft ID provided in Name"
+        royalty = "Not Found"
+        image_cid = "Not Found"
+
+    for i in holders:
         nft_data = {
-            "Name": nft,
-            "Description": "Not Found, nft ID provided in Name",
-            "Owner Wallet Address(es)": quantity,
-            "Royalty Percentage": "Not Found",
-            "Attributes": "Not Found",
-            "Properties": "Not Found",
-            "MetaData CID": cid,
-            "Image CID": "Not Found",
-            
+            "Name": name,
+            "Description": description,
+            "Owner": i[0],
+            "Amount": i[1],
+            "Royalty Percentage": royalty,
+            "Metadata Cid": cid,
+            "Image Cid": image_cid,
         }
-    return nft_data
+        p = 1
+        if type(attrs) == list:
+            for i in attrs:
+                key_name_trait = "Trait " + str(p)
+                key_name_value = "Value " + str(p)
+                nft_data[key_name_trait] = i["trait_type"]
+                nft_data[key_name_value] = i["value"]
+                p += 1
+
+        datas_nft.append(nft_data)
+    return datas_nft
 
 def get_nft_datas():
     account_Id = c.ACCOUNT_ID

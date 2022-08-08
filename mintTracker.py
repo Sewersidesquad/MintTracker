@@ -11,6 +11,7 @@ import csv
 import itertools
 
 
+
 class App(customtkinter.CTk):
     customtkinter.set_appearance_mode("dark")
     customtkinter.set_default_color_theme("dark-blue")
@@ -33,6 +34,7 @@ class App(customtkinter.CTk):
         self.nfts = []
         self.log_var = tk.StringVar()
         self.log_var.set("Click create or track to get started!")
+
 
         self.title_label = customtkinter.CTkLabel(
             master=self, text="Mint Tracker", text_font=("default", 28)
@@ -59,7 +61,7 @@ class App(customtkinter.CTk):
             master=self,
             orient=tk.HORIZONTAL,
             length=500,
-            maximum=3,
+            maximum=100,
             mode="determinate",
         )
 
@@ -93,6 +95,7 @@ class App(customtkinter.CTk):
         self.the_log_label.grid(row=4, column=2, **padding, sticky=tk.N)
         self.pb1.grid(row=4, column=2, sticky=tk.S)
         self.my_label.grid(row=5, column=2, **padding)
+    
 
     def get_consts(self):
         c.ATTRS = self.attr_checkbox.get()
@@ -157,6 +160,8 @@ class App(customtkinter.CTk):
         path = os.getcwd() + f"\\{account_ID}s_mints_Tracked_On_{date}.csv"
         data = [i.data for i in self.nfts]
         data = list(itertools.chain.from_iterable(data))
+        amounts = {"Amount Minted": f"Total = {c.amount_minted_all}" , "Amount": f"Total: {c.amount_held_all}"}
+        data.append(amounts)
         keys = set().union(*(d.keys() for d in data))
         klen = len(keys)
         keysord = [None] * klen
@@ -164,36 +169,54 @@ class App(customtkinter.CTk):
         keysord[1] = "Description"
         keysord[2] = "Owner"
         keysord[3] = "Amount"
-        keysord[4] = "Royalty Percentage"
-        keysord[5] = "Metadata Cid"
-        keysord[6] = "Image Cid"
-        if klen != 7:
+        keysord[4] = "Amount Minted"
+        keysord[5] = "Royalty Percentage"
+        keysord[6] = "Metadata Cid"
+        keysord[7] = "Image Cid"
+        if klen != 8:
             i = 1
-            p = 7
+            p = 8
             while p < klen:
                 keysord[p] = f"Trait {i}"
                 keysord[p + 1] = f"Value {i}"
                 p += 2
                 i += 1
-        with open(path, 'w', newline='') as output_file:
-            dict_writer = csv.DictWriter(output_file, keysord)
-            dict_writer.writeheader()
-            dict_writer.writerows(data)
-        self.log_var.set(
-            f"Your spreadsheet is ready, in the same file as MintTracker.exe"
+        try:
+            with open(path, 'w', newline='', encoding="utf-8") as output_file:
+                dict_writer = csv.DictWriter(output_file, keysord)
+                dict_writer.writeheader()
+                dict_writer.writerows(data)
+                self.log_var.set(
+            f"Your spreadsheet is in the MintTracker folder. \n Minted All: {c.amount_minted_all}, Held Mints: {c.amount_held_all}"
         )
-
-
+        except PermissionError:
+            self.log_var.set(
+            f"Your spreadsheet might be open, close it, you have 100 seconds"
+        )
+            time.sleep(100)
+            try:
+                with open(path, 'w', newline='', encoding="utf-8") as output_file:
+                    dict_writer = csv.DictWriter(output_file, keysord)
+                    dict_writer.writeheader()
+                    dict_writer.writerows(data)
+                    self.log_var.set(
+            f"Your spreadsheet is in the MintTracker folder. \n Minted All: {c.amount_minted_all}, Held Mints: {c.amount_held_all}"
+        ) 
+            except Exception:      
+                self.log_var.set(
+                f"You didn't close the spreadsheet in time. Or something went wrong. Restart"
+            )
 
 # Object for each nft
 class MintedNft:
     def __init__(self, nft_data):
-        self.nft = nft_data.replace("'", "")
+        self.nft = nft_data[0].replace("'", "")
+        self.amount_minted = int(nft_data[1])
         holders = act.find_holders(self.nft)
         self.holders = holders
         cid = act.convert_cid(self.nft)
         self.cid = cid
-        data = act.retrieve_data(self.nft, self.holders, self.cid, c.ATTRS)
+        data = act.retrieve_data(self.nft, self.amount_minted, self.holders, self.cid, c.ATTRS)
         self.data = data
 
 
@@ -201,7 +224,6 @@ class MintedNft:
 def main():
     app = App()
     app.mainloop()
-
 
 if __name__ == "__main__":
     main()

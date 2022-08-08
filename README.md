@@ -1,6 +1,7 @@
 # MintTracker
 
 Please double check your sheets to make sure you're happy with them. Let me know if there's any issues. 
+
 Track where all the nfts you have minted are stored
 
 Download it here - https://github.com/Sewersidesquad/MintTracker/releases

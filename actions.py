@@ -1,20 +1,37 @@
 import constants as c
 import requests
 import base58
+import time
+
 
 def find_holders(nft):
-    response = requests.get(
-        f"https://api3.loopring.io/api/v3/nft/info/nftHolders?nftData={nft}",
-        headers=c.HEADERS,
-    ).json()
+    accounts = []
     owner_addresses = []
-    for i in range(response["totalNum"]):
-        account = response["nftHolders"][i]["accountId"]
+    offset = 0
+    flag = 1
+    try:
+        while flag:
+            time.sleep(1)
+            response = requests.get(
+                f"https://api3.loopring.io/api/v3/nft/info/nftHolders?nftData={nft}&offset={offset}",
+                headers=c.HEADERS,
+            ).json()
+            for i in response['nftHolders']:
+                accounts.append((i['accountId'], i['amount']))
+            offset += 100
+            if response['totalNum'] == 100:
+                flag = 1
+            else:
+                flag = 0
+    except Exception:
+        pass
+    for i in accounts:
         owner = requests.get(
-            str(f"https://api3.loopring.io/api/v3/account?accountId={account}")
+            str(f"https://api3.loopring.io/api/v3/account?accountId={i[0]}")
         ).json()
         Owner = owner["owner"]
-        amount = response["nftHolders"][i]["amount"]
+        amount = i[1]
+        c.amount_held_all += int(i[1])
         owner_addresses.append((Owner, amount))
     return owner_addresses
 
@@ -27,14 +44,8 @@ def convert_cid(nft):
     base58Str = base58.b58encode(bytesStr)
     return str(base58Str.decode("UTF-8"))
 
-def quantity_dict(holders):
-    quant_dict = {}
-    for i in holders:
-        holder = i[0]
-        quant_dict[holder] = i[1]
-    return quant_dict
 
-def retrieve_data(nft, holders, cid, attrs):
+def retrieve_data(nft, amount_minted, holders, cid, attrs):
     datas_nft = []
     try:
         metadata = requests.get(f"https://spacemonke.infura-ipfs.io/ipfs/{cid}").json()
@@ -43,25 +54,24 @@ def retrieve_data(nft, holders, cid, attrs):
                 attrs = metadata["attributes"]
             else:
                 attrs = "Not selected"
-
         except Exception:
             attrs = "Not Found"
-        name = metadata["name"]
-        description = metadata["description"]
-        royalty = metadata["royalty_percentage"]
-        image_cid = metadata["image"]
+        name = str(metadata["name"])
+        description = str(metadata["description"])
+        royalty = str(metadata["royalty_percentage"])
+        image_cid = str(metadata["image"])
     except Exception:
-        name = nft
+        name = str(nft)
         description = "Not Found, nft ID provided in Name"
         royalty = "Not Found"
         image_cid = "Not Found"
-
     for i in holders:
         nft_data = {
             "Name": name,
             "Description": description,
             "Owner": i[0],
             "Amount": i[1],
+            "Amount Minted": amount_minted,
             "Royalty Percentage": royalty,
             "Metadata Cid": cid,
             "Image Cid": image_cid,
@@ -76,6 +86,7 @@ def retrieve_data(nft, holders, cid, attrs):
                 p += 1
 
         datas_nft.append(nft_data)
+
     return datas_nft
 
 def get_nft_datas():
@@ -88,13 +99,13 @@ def get_nft_datas():
     ).json()
     try:
         c.TOTAL = int(responseJson["totalNum"])
-        total = c.TOTAL
     except KeyError:
         return False
     try:
         while True:
             for i in range(50):
-                mintedDatas.append(responseJson["mints"][i]["nftData"])
+                mintedDatas.append((responseJson["mints"][i]["nftData"], responseJson["mints"][i]["amount"]))
+                c.amount_minted_all += int(responseJson["mints"][i]["amount"])
                 created = responseJson["mints"][i]["createdAt"]
             url = str(
                 f"https://api3.loopring.io/api/v3/user/nft/mints?accountId={account_Id}&start=1567053142&end={created}"
@@ -102,7 +113,6 @@ def get_nft_datas():
             responseJson = requests.get(url, headers=headers).json()
     except IndexError:
         pass
-
     return mintedDatas
     
 

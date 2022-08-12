@@ -8,6 +8,12 @@ Download it here - https://github.com/Sewersidesquad/MintTracker/releases
 
 extract/unzip it and read the get started pdf :)
 
+
+Install dependencies by:
+```
+pip install -r requirements.txt
+```
+
 or read it here without the pictures - 
 
 Step 1
